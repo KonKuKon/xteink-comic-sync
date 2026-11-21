@@ -3,44 +3,51 @@ import sys
 import time
 import tarfile
 import re
-import requests
-from playwright.sync_api import sync_playwright
+import urllib.request
+import json
 
 COMICS = [
     {
         'folder': '01_Huong_Dan_Sinh_Ton_Trong_Hoc_Vien',
         'title': 'Hướng Dẫn Sinh Tồn Trong Học Viện',
+        'url': 'https://nettruyenar.com/truyen-tranh/huong-dan-sinh-ton-trong-hoc-vien-18036',
         'slug': 'huong-dan-sinh-ton-trong-hoc-vien'
     },
     {
         'folder': '02_Helmut_Dua_Tre_Bi_Lang_Quen',
         'title': 'Helmut - Đứa Trẻ Bị Lãng Quên',
-        'slug': 'helmut-dua-tre-bi-lang-quen'
+        'url': 'https://nettruyenar.com/truyen-tranh/helmut-dua-tre-bi-ruong-bo-12894',
+        'slug': 'helmut-dua-tre-bi-ruong-bo'
     },
     {
         'folder': '03_Sat_Thu_Tai_Sinh_Thanh_Kiem_Si',
         'title': 'Sát Thủ Tái Sinh Thành Một Kiếm Sĩ Thiên Tài',
+        'url': 'https://nettruyenar.com/truyen-tranh/sat-thu-tai-sinh-thanh-mot-kiem-si-thien-tai-15127',
         'slug': 'sat-thu-tai-sinh-thanh-mot-kiem-si-thien-tai'
     },
     {
         'folder': '04_Phap_Su_Thien_Tai_Giau_Nghe',
         'title': 'Pháp Sư Thiên Tài Giấu Nghề',
-        'slug': 'phap-su-thien-tai-giau-nghe'
+        'url': 'https://nettruyenar.com/truyen-tranh/thien-tai-ma-phap-su-giau-nghe-12113',
+        'slug': 'thien-tai-ma-phap-su-giau-nghe'
     },
     {
         'folder': '05_Chuyen_Sinh_Thanh_Con_Ngoai_Gia_Thu',
         'title': 'Chuyển Sinh Thành Con Ngoài Giá Thú Của Gia Đình Kiếm Thuật Danh Tiếng',
+        'url': 'https://nettruyenar.com/truyen-tranh/chuyen-sinh-thanh-con-ngoai-gia-thu-cua-gia-dinh-kiem-thuat-danh-tieng-26170',
         'slug': 'chuyen-sinh-thanh-con-ngoai-gia-thu-cua-gia-dinh-kiem-thuat-danh-tieng'
     },
     {
         'folder': '06_Vo_Han_Phap_Su',
         'title': 'Vô Hạn Pháp Sư',
-        'slug': 'vo-han-phap-su'
+        'url': 'https://nettruyenar.com/truyen-tranh/dai-phap-su-toan-nang-13507',
+        'slug': 'dai-phap-su-toan-nang'
     },
     {
         'folder': '07_Ke_Song_Sot_Vua_Kiem',
         'title': 'Kẻ Sống Sót Vua Kiếm',
-        'slug': 'ke-song-sot-vua-kiem'
+        'url': 'https://nettruyenar.com/truyen-tranh/cau-chuyen-sinh-ton-cua-kiem-vuong-o-the-gioi-khac-29404',
+        'slug': 'cau-chuyen-sinh-ton-cua-kiem-vuong-o-the-gioi-khac'
     }
 ]
 
@@ -48,119 +55,111 @@ DIST_DIR = 'dist'
 os.makedirs(DIST_DIR, exist_ok=True)
 
 HEADERS = {
-    'Referer': 'https://goctruyentranhvui41.com/',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Referer': 'https://nettruyenar.com/'
 }
 
-def clean_chapter_name(text):
-    m = re.search(r'(ch[uư][oơ]ng\s*\d+(\.\d+)?)', text, re.IGNORECASE)
-    if m:
-        c = m.group(1).title().replace(' ', '_')
-        return c
-    clean = re.sub(r'[^\w\d_-]', '_', text)
-    return clean[:30]
+def http_get(url):
+    req = urllib.request.Request(url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return resp.read().decode('utf-8', errors='ignore')
+
+def download_file(url, dest):
+    req = urllib.request.Request(url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        content = resp.read()
+        if len(content) > 1000:
+            with open(dest, 'wb') as f:
+                f.write(content)
+            return True
+    return False
 
 def process():
     synced_archives = []
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
-        context = browser.new_context(
-            user_agent=HEADERS['User-Agent'],
-            viewport={'width': 1280, 'height': 800}
-        )
-        page = context.new_page()
 
-        for c in COMICS:
-            comic_url = f"https://goctruyentranhvui41.com/truyen/{c['slug']}"
-            print(f"\n==========================================")
-            print(f"Checking: {c['title']} ({comic_url})")
+    for c in COMICS:
+        print(f"\n==========================================")
+        print(f"Checking: {c['title']} ({c['url']})")
+
+        try:
+            html = http_get(c['url'])
             
-            try:
-                page.goto(comic_url, wait_until="domcontentloaded", timeout=45000)
-                page.wait_for_timeout(2500)
-                
-                # Check for chapter links
-                links = page.evaluate("""() => {
-                    const res = [];
-                    const anchors = document.querySelectorAll('a[href*="/chuong-"]');
-                    anchors.forEach(a => {
-                        const href = a.href;
-                        const text = a.innerText.trim();
-                        if (href && text && !res.some(r => r.href === href)) {
-                            res.push({ href, text });
-                        }
-                    });
-                    return res;
-                }""")
-                
-                if not links:
-                    print(f"Warning: No chapter links found on {comic_url}")
-                    continue
-                    
-                latest = links[0]
-                chap_name = clean_chapter_name(latest['text'])
-                print(f"Latest Chapter: {latest['text']} -> {latest['href']} (Folder: {chap_name})")
-                
-                # Navigate to chapter page
-                page.goto(latest['href'], wait_until="domcontentloaded", timeout=45000)
-                page.wait_for_timeout(3000)
-                
-                # Scroll down in stages to trigger lazy loading
-                for _ in range(8):
-                    page.evaluate("window.scrollBy(0, 2000)")
-                    page.wait_for_timeout(800)
-                    
-                # Extract image URLs
-                img_urls = page.evaluate("""() => {
-                    const urls = [];
-                    document.querySelectorAll('img').forEach(img => {
-                        const src = img.currentSrc || img.src || img.getAttribute('data-src') || '';
-                        if (src && src.includes('gtt-bk.pro/image/') && !src.includes('/image/c/')) {
-                            if (!urls.includes(src)) urls.push(src);
-                        }
-                    });
-                    return urls;
-                }""")
-                
-                print(f"Found {len(img_urls)} comic pages for {chap_name}")
-                if not img_urls:
-                    print("No images found, skipping archive creation.")
-                    continue
-                
-                # Download images into staging directory
-                chap_dir = os.path.join("staging", c['folder'], chap_name)
-                os.makedirs(chap_dir, exist_ok=True)
-                
-                downloaded_count = 0
-                for idx, u in enumerate(img_urls):
-                    page_num = f"{idx+1:03d}.jpg"
-                    dest_file = os.path.join(chap_dir, page_num)
-                    try:
-                        r = requests.get(u, headers=HEADERS, timeout=15)
-                        if r.status_code == 200 and len(r.content) > 1000:
-                            with open(dest_file, 'wb') as f:
-                                f.write(r.content)
-                            downloaded_count += 1
-                    except Exception as ex:
-                        print(f"Err downloading page {idx+1}: {ex}")
-                
-                print(f"Successfully downloaded {downloaded_count}/{len(img_urls)} pages.")
-                
-                # Create tar.gz archive for this comic
-                tar_filename = f"{c['folder']}.tar.gz"
-                tar_path = os.path.join(DIST_DIR, tar_filename)
-                
-                with tarfile.open(tar_path, "w:gz") as tar:
-                    tar.add(os.path.join("staging", c['folder']), arcname=c['folder'])
-                
-                print(f"Created archive: {tar_path} ({os.path.getsize(tar_path)} bytes)")
-                synced_archives.append((c['folder'], tar_filename))
-                
-            except Exception as e:
-                print(f"Error processing {c['title']}: {e}")
-                
-        browser.close()
+            # Find all chapter links for this comic
+            re_chap = re.compile(r'<a[^>]+href="(https://nettruyenar\.com/truyen-tranh/[^"]+/(?:chapter|chuong)-(\d+(?:\.\d+)?)[^"]*)"[^>]*>([^<]+)</a>', re.IGNORECASE)
+            chapters = []
+            for m in re_chap.finditer(html):
+                href = m.group(1)
+                if c['slug'] in href:
+                    num = float(m.group(2))
+                    chapters.append({'href': href, 'num': num, 'raw_num': m.group(2)})
+
+            if not chapters:
+                print(f"Warning: No chapter links found for {c['title']}")
+                continue
+
+            # Sort descending by chapter number
+            chapters.sort(key=lambda x: x['num'], reverse=True)
+            
+            # Deduplicate by chapter number
+            unique_chapters = []
+            seen_nums = set()
+            for ch in chapters:
+                if ch['num'] not in seen_nums:
+                    seen_nums.add(ch['num'])
+                    unique_chapters.append(ch)
+
+            # Get the latest chapter
+            latest = unique_chapters[0]
+            chap_clean = f"Chuong_{int(latest['num']) if latest['num'].is_integer() else latest['num']}"
+            print(f"Latest Chapter: {chap_clean} -> {latest['href']}")
+
+            # Fetch chapter page
+            chap_html = http_get(latest['href'])
+
+            # Extract comic image URLs
+            img_urls = re.findall(r'https?://[^"\'\s]+/nettruyen/[^"\'\s]+\.(?:jpg|jpeg|png|webp)', chap_html, re.IGNORECASE)
+            
+            # Deduplicate while preserving order
+            seen_urls = set()
+            ordered_imgs = []
+            for u in img_urls:
+                if u not in seen_urls:
+                    seen_urls.add(u)
+                    ordered_imgs.append(u)
+
+            print(f"Found {len(ordered_imgs)} pages for {c['title']} {chap_clean}")
+            if not ordered_imgs:
+                print("No images found, skipping archive creation.")
+                continue
+
+            # Download images to staging
+            chap_dir = os.path.join("staging", c['folder'], chap_clean)
+            os.makedirs(chap_dir, exist_ok=True)
+
+            downloaded = 0
+            for idx, u in enumerate(ordered_imgs):
+                dest_file = os.path.join(chap_dir, f"{idx+1:03d}.jpg")
+                try:
+                    if download_file(u, dest_file):
+                        downloaded += 1
+                except Exception as ex:
+                    print(f"  Err downloading page {idx+1}: {ex}")
+
+            print(f"Downloaded {downloaded}/{len(ordered_imgs)} pages.")
+
+            # Create tar.gz archive
+            tar_filename = f"{c['folder']}.tar.gz"
+            tar_path = os.path.join(DIST_DIR, tar_filename)
+
+            with tarfile.open(tar_path, "w:gz") as tar:
+                tar.add(os.path.join("staging", c['folder']), arcname=c['folder'])
+
+            size_mb = os.path.getsize(tar_path) / (1024 * 1024)
+            print(f"Created archive: {tar_path} ({size_mb:.2f} MB)")
+            synced_archives.append((c['folder'], tar_filename))
+
+        except Exception as e:
+            print(f"Error processing {c['title']}: {e}")
 
     # Generate xteink_cloud_sync.sh for the ASUS ZenFone 4 Max
     now_str = time.strftime('%H:%M %d/%m')
