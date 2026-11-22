@@ -4,6 +4,9 @@ on:
   schedule:
     # Chạy tự động hàng ngày lúc 7:00 sáng giờ Việt Nam (00:00 UTC)
     - cron: '0 0 * * *'
+  push:
+    paths:
+      - 'comics.txt'
   workflow_dispatch:
 
 permissions:

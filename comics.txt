@@ -1,0 +1,24 @@
+# ==============================================================================
+# DANH SÁCH TRUYỆN THEO DÕI CHO ASUS ZENFONE XTEINK
+# ==============================================================================
+# Hướng dẫn sử dụng:
+# 1. Bạn có thể mở file này trên điện thoại hoặc máy tính, thêm/sửa truyện.
+# 2. Bấm "Commit changes" (Lưu) -> GitHub sẽ tự động tải truyện và đóng gói ngay!
+# 3. Mỗi sáng lúc 7:00 (giờ VN), GitHub cũng sẽ tự động chạy để kiểm tra chap mới.
+#
+# Cú pháp mỗi dòng:
+#   [Link truyện hoặc Slug] | [Chap bắt đầu] | [Số chap muốn lấy]
+#
+# Ví dụ:
+#   # Tải từ Chap 1 đến Chap 10:
+#   https://nettruyenar.com/truyen-tranh/huong-dan-sinh-ton-trong-hoc-vien-18036 | 1 | 10
+#
+#   # Tải từ Chap 50 trở đi:
+#   https://nettruyenar.com/truyen-tranh/helmut-dua-tre-bi-ruong-bo-12894 | 50
+#
+#   # Chỉ tự động cập nhật Chap mới nhất hàng ngày:
+#   https://nettruyenar.com/truyen-tranh/dai-phap-su-toan-nang-13507 | latest
+# ==============================================================================
+
+# Dán link các bộ truyện bạn muốn theo dõi vào bên dưới:
+
