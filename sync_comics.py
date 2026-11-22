@@ -91,6 +91,7 @@ def process():
 
         try:
             html = http_get(c['url'])
+            print(f"HTML len: {len(html)}, snippet: {html[:200]!r}")
             
             # Find all chapter links for this comic
             re_chap = re.compile(r'<a[^>]+href="((?:https://nettruyenar\.com)?/truyen-tranh/[^"]+/(?:chapter|chuong)-(\d+(?:\.\d+)?)[^"]*)"[^>]*>', re.IGNORECASE)
