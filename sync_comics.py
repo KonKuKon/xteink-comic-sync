@@ -3,8 +3,7 @@ import sys
 import time
 import tarfile
 import re
-import urllib.request
-import json
+from curl_cffi import requests
 
 try:
     sys.stdout.reconfigure(line_buffering=True)
@@ -69,19 +68,18 @@ HEADERS = {
     'Referer': 'https://nettruyenar.com/'
 }
 
+session = requests.Session(impersonate="chrome124")
+
 def http_get(url):
-    req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=20) as resp:
-        return resp.read().decode('utf-8', errors='ignore')
+    r = session.get(url, headers=HEADERS, timeout=20)
+    return r.text
 
 def download_file(url, dest):
-    req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=25) as resp:
-        content = resp.read()
-        if len(content) > 1000:
-            with open(dest, 'wb') as f:
-                f.write(content)
-            return True
+    r = session.get(url, headers=HEADERS, timeout=25)
+    if r.status_code == 200 and len(r.content) > 1000:
+        with open(dest, 'wb') as f:
+            f.write(r.content)
+        return True
     return False
 
 def process():
