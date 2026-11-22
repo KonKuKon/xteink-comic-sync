@@ -6,6 +6,16 @@ import re
 import urllib.request
 import json
 
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+except Exception:
+    pass
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir:
+    os.chdir(script_dir)
+
 COMICS = [
     {
         'folder': '01_Huong_Dan_Sinh_Ton_Trong_Hoc_Vien',
@@ -85,10 +95,12 @@ def process():
             html = http_get(c['url'])
             
             # Find all chapter links for this comic
-            re_chap = re.compile(r'<a[^>]+href="(https://nettruyenar\.com/truyen-tranh/[^"]+/(?:chapter|chuong)-(\d+(?:\.\d+)?)[^"]*)"[^>]*>([^<]+)</a>', re.IGNORECASE)
+            re_chap = re.compile(r'<a[^>]+href="((?:https://nettruyenar\.com)?/truyen-tranh/[^"]+/(?:chapter|chuong)-(\d+(?:\.\d+)?)[^"]*)"[^>]*>', re.IGNORECASE)
             chapters = []
             for m in re_chap.finditer(html):
                 href = m.group(1)
+                if href.startswith('/'):
+                    href = 'https://nettruyenar.com' + href
                 if c['slug'] in href:
                     num = float(m.group(2))
                     chapters.append({'href': href, 'num': num, 'raw_num': m.group(2)})
