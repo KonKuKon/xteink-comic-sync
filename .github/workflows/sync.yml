@@ -2,8 +2,8 @@ name: XTEINK Cloud Comic Sync
 
 on:
   schedule:
-    # Chạy tự động mỗi 6 tiếng một lần (0:00, 6:00, 12:00, 18:00 UTC)
-    - cron: '0 */6 * * *'
+    # Chạy tự động hàng ngày lúc 7:00 sáng giờ Việt Nam (00:00 UTC)
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 permissions:
