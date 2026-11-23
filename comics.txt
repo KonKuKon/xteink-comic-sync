@@ -1,32 +1,16 @@
 # ==============================================================================
 # DANH SÁCH TRUYỆN THEO DÕI CHO ASUS ZENFONE XTEINK
 # ==============================================================================
-# Hướng dẫn sử dụng:
-# 1. Bạn có thể mở file này trên điện thoại hoặc máy tính, thêm/sửa truyện.
-# 2. Bấm "Commit changes" (Lưu) -> GitHub sẽ tự động tải truyện và đóng gói ngay!
-# 3. Mỗi sáng lúc 7:00 (giờ VN), GitHub cũng sẽ tự động chạy để kiểm tra chap mới.
-#
-# Cú pháp mỗi dòng:
-#   [Link truyện] | [Chap bắt đầu] | [Chap kết thúc]
-#
-# Ví dụ:
-#   # Tải từ Chap 1 đến Chap 10:
-#   https://nettruyenar.com/truyen-tranh/huong-dan-sinh-ton-trong-hoc-vien-18036 | 1 | 10
-#
-#   # Tải từ Chap 50 đến hết các chap mới nhất:
-#   https://nettruyenar.com/truyen-tranh/helmut-dua-tre-bi-ruong-bo-12894 | 50
-#
-#   # Chỉ tự động cập nhật Chap mới nhất hàng ngày:
-#   https://nettruyenar.com/truyen-tranh/dai-phap-su-toan-nang-13507 | latest
+# Cú pháp mỗi dòng: [Link truyện] | [Chap bắt đầu]
+# Tự động đồng bộ từ Chap bắt đầu đến Chap mới nhất trên web mỗi ngày lúc 7:00 sáng
 # ==============================================================================
 
-# 9 BỘ TRUYỆN YÊU THÍCH (ĐANG CẤU HÌNH TẢI TỪ CHAP 1 ĐẾN CHAP 10):
-https://nettruyenar.com/truyen-tranh/thanh-mai-truc-ma-cua-de-nhat-thien-ha-25478 | 1 | 10
-https://nettruyenar.com/truyen-tranh/thiet-huyet-kiem-si-hoi-quy-14340 | 1 | 10
-https://nettruyenar.com/truyen-tranh/sat-long-nhan-hoi-quy-sieu-viet-26629 | 1 | 10
-https://nettruyenar.com/truyen-tranh/quy-toc-luoi-bieng-tro-thanh-thien-tai-11503 | 1 | 10
-https://nettruyenar.com/truyen-tranh/huong-dan-sinh-ton-trong-hoc-vien-18036 | 1 | 10
-https://nettruyenar.com/truyen-tranh/helmut-dua-tre-bi-ruong-bo-12894 | 1 | 10
-https://nettruyenar.com/truyen-tranh/moi-linh-danh-thue-tro-ve-deu-co-mot-ke-hoach-26273 | 1 | 10
-https://nettruyenar.com/truyen-tranh/chuyen-gia-con-trung-tai-duong-gia-tu-xuyen-26309 | 1 | 10
-https://nettruyenar.com/truyen-tranh/con-trai-ut-cua-ba-tuoc-la-mot-nguoi-choi-17413 | 1 | 10
+https://nettruyenar.com/truyen-tranh/thanh-mai-truc-ma-cua-de-nhat-thien-ha-25478 | 109
+https://nettruyenar.com/truyen-tranh/thiet-huyet-kiem-si-hoi-quy-14340 | 190
+https://nettruyenar.com/truyen-tranh/sat-long-nhan-hoi-quy-sieu-viet-26629 | 80
+https://nettruyenar.com/truyen-tranh/quy-toc-luoi-bieng-tro-thanh-thien-tai-11503 | 139
+https://nettruyenar.com/truyen-tranh/huong-dan-sinh-ton-trong-hoc-vien-18036 | 132
+https://nettruyenar.com/truyen-tranh/helmut-dua-tre-bi-ruong-bo-12894 | 142
+https://nettruyenar.com/truyen-tranh/moi-linh-danh-thue-tro-ve-deu-co-mot-ke-hoach-26273 | 110
+https://nettruyenar.com/truyen-tranh/chuyen-gia-con-trung-tai-duong-gia-tu-xuyen-26309 | 71
+https://nettruyenar.com/truyen-tranh/con-trai-ut-cua-ba-tuoc-la-mot-nguoi-choi-17413 | 1
