@@ -16,72 +16,6 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 if script_dir:
     os.chdir(script_dir)
 
-COMICS = [
-    {
-        'folder': '01_Thanh_Mai_Truc_Ma_Cua_De_Nhat_Thien_Ha',
-        'title': 'Thanh Mai Trúc Mã Của Đệ Nhất Thiên Hạ',
-        'url': 'https://nettruyenar.com/truyen-tranh/thanh-mai-truc-ma-cua-de-nhat-thien-ha-25478',
-        'slug': 'thanh-mai-truc-ma-cua-de-nhat-thien-ha',
-        'from_chap': 109
-    },
-    {
-        'folder': '02_Thiet_Huyet_Kiem_Si_Hoi_Quy',
-        'title': 'Thiết Huyết Kiếm Sĩ Phục Thù',
-        'url': 'https://nettruyenar.com/truyen-tranh/thiet-huyet-kiem-si-hoi-quy',
-        'slug': 'thiet-huyet-kiem-si-hoi-quy',
-        'from_chap': 190
-    },
-    {
-        'folder': '03_Sat_Long_Nhan_Hoi_Quy_Sieu_Viet',
-        'title': 'Sát Long Nhân Hồi Quy Siêu Việt',
-        'url': 'https://nettruyenar.com/truyen-tranh/sat-long-nhan-hoi-quy-sieu-viet-26629',
-        'slug': 'sat-long-nhan-hoi-quy-sieu-viet',
-        'from_chap': 80
-    },
-    {
-        'folder': '04_Quy_Toc_Luoi_Bieng_Tro_Thanh_Thien_Tai',
-        'title': 'Quý Tộc Lười Biếng Trở Thành Thiên Tài',
-        'url': 'https://nettruyenar.com/truyen-tranh/quy-toc-luoi-bieng-tro-thanh-thien-tai-11503',
-        'slug': 'quy-toc-luoi-bieng-tro-thanh-thien-tai',
-        'from_chap': 139
-    },
-    {
-        'folder': '05_Huong_Dan_Sinh_Ton_Trong_Hoc_Vien',
-        'title': 'Hướng Dẫn Sinh Tồn Trong Học Viện',
-        'url': 'https://nettruyenar.com/truyen-tranh/huong-dan-sinh-ton-trong-hoc-vien-18036',
-        'slug': 'huong-dan-sinh-ton-trong-hoc-vien',
-        'from_chap': 133
-    },
-    {
-        'folder': '06_Helmut_Dua_Tre_Bi_Lang_Quen',
-        'title': 'Helmut - Đứa Trẻ Bị Lãng Quên',
-        'url': 'https://nettruyenar.com/truyen-tranh/helmut-dua-tre-bi-ruong-bo-12894',
-        'slug': 'helmut-dua-tre-bi-ruong-bo',
-        'from_chap': 142
-    },
-    {
-        'folder': '07_Moi_Linh_Danh_Thue_Tro_Ve_Deu_Co_Mot_Ke_Hoach',
-        'title': 'Mỗi Lính Đánh Thuê Trở Về Đều Có Một Kế Hoạch',
-        'url': 'https://nettruyenar.com/truyen-tranh/moi-linh-danh-thue-tro-ve-deu-co-mot-ke-hoach-26273',
-        'slug': 'moi-linh-danh-thue-tro-ve-deu-co-mot-ke-hoach',
-        'from_chap': 110
-    },
-    {
-        'folder': '08_Chuyen_Gia_Con_Trung_Tai_Duong_Gia_Tu_Xuyen',
-        'title': 'Chuyên Gia Côn Trùng Tại Đường Gia Tứ Xuyên',
-        'url': 'https://nettruyenar.com/truyen-tranh/chuyen-gia-con-trung-tai-duong-gia-tu-xuyen-26309',
-        'slug': 'chuyen-gia-con-trung-tai-duong-gia-tu-xuyen',
-        'from_chap': 71
-    },
-    {
-        'folder': '09_Con_Trai_Ut_Cua_Ba_Tuoc_La_Mot_Nguoi_Choi',
-        'title': 'Con Trai Út Của Bá Tước Là Một Người Chơi',
-        'url': 'https://nettruyenar.com/truyen-tranh/con-trai-ut-cua-ba-tuoc-la-mot-nguoi-choi-17413',
-        'slug': 'con-trai-ut-cua-ba-tuoc-la-mot-nguoi-choi',
-        'from_chap': 1
-    }
-]
-
 DIST_DIR = 'dist'
 os.makedirs(DIST_DIR, exist_ok=True)
 
@@ -90,17 +24,85 @@ HEADERS = {
     'Referer': 'https://nettruyenar.com/'
 }
 
+API_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Referer': 'https://nettruyenar.com/',
+    'X-Requested-With': 'XMLHttpRequest'
+}
+
 session = requests.Session(impersonate="chrome124")
 
-def http_get(url):
+FOLDER_MAPPING = {
+    'thanh-mai-truc-ma-cua-de-nhat-thien-ha': '01_Thanh_Mai_Truc_Ma_Cua_De_Nhat_Thien_Ha',
+    'thiet-huyet-kiem-si-hoi-quy': '02_Thiet_Huyet_Kiem_Si_Hoi_Quy',
+    'sat-long-nhan-hoi-quy-sieu-viet': '03_Sat_Long_Nhan_Hoi_Quy_Sieu_Viet',
+    'quy-toc-luoi-bieng-tro-thanh-thien-tai': '04_Quy_Toc_Luoi_Bieng_Tro_Thanh_Thien_Tai',
+    'huong-dan-sinh-ton-trong-hoc-vien': '05_Huong_Dan_Sinh_Ton_Trong_Hoc_Vien',
+    'helmut-dua-tre-bi-ruong-bo': '06_Helmut_Dua_Tre_Bi_Lang_Quen',
+    'helmut-dua-tre-bi-lang-quen': '06_Helmut_Dua_Tre_Bi_Lang_Quen',
+    'moi-linh-danh-thue-tro-ve-deu-co-mot-ke-hoach': '07_Moi_Linh_Danh_Thue_Tro_Ve_Deu_Co_Mot_Ke_Hoach',
+    'chuyen-gia-con-trung-tai-duong-gia-tu-xuyen': '08_Chuyen_Gia_Con_Trung_Tai_Duong_Gia_Tu_Xuyen',
+    'con-trai-ut-cua-ba-tuoc-la-mot-nguoi-choi': '09_Con_Trai_Ut_Cua_Ba_Tuoc_La_Mot_Nguoi_Choi',
+}
+
+DEFAULT_COMICS = [
+    {
+        'url': 'https://nettruyenar.com/truyen-tranh/thanh-mai-truc-ma-cua-de-nhat-thien-ha-25478',
+        'from_chap': 1,
+        'to_chap': 10
+    },
+    {
+        'url': 'https://nettruyenar.com/truyen-tranh/thiet-huyet-kiem-si-hoi-quy-14340',
+        'from_chap': 1,
+        'to_chap': 10
+    },
+    {
+        'url': 'https://nettruyenar.com/truyen-tranh/sat-long-nhan-hoi-quy-sieu-viet-26629',
+        'from_chap': 1,
+        'to_chap': 10
+    },
+    {
+        'url': 'https://nettruyenar.com/truyen-tranh/quy-toc-luoi-bieng-tro-thanh-thien-tai-11503',
+        'from_chap': 1,
+        'to_chap': 10
+    },
+    {
+        'url': 'https://nettruyenar.com/truyen-tranh/huong-dan-sinh-ton-trong-hoc-vien-18036',
+        'from_chap': 1,
+        'to_chap': 10
+    },
+    {
+        'url': 'https://nettruyenar.com/truyen-tranh/helmut-dua-tre-bi-ruong-bo-12894',
+        'from_chap': 1,
+        'to_chap': 10
+    },
+    {
+        'url': 'https://nettruyenar.com/truyen-tranh/moi-linh-danh-thue-tro-ve-deu-co-mot-ke-hoach-26273',
+        'from_chap': 1,
+        'to_chap': 10
+    },
+    {
+        'url': 'https://nettruyenar.com/truyen-tranh/chuyen-gia-con-trung-tai-duong-gia-tu-xuyen-26309',
+        'from_chap': 1,
+        'to_chap': 10
+    },
+    {
+        'url': 'https://nettruyenar.com/truyen-tranh/con-trai-ut-cua-ba-tuoc-la-mot-nguoi-choi-17413',
+        'from_chap': 1,
+        'to_chap': 10
+    }
+]
+
+def http_get(url, is_api=False):
+    hdrs = API_HEADERS if is_api else HEADERS
     for _ in range(3):
         try:
-            r = session.get(url, headers=HEADERS, timeout=20)
+            r = session.get(url, headers=hdrs, timeout=25)
             if r.status_code == 200:
-                return r.text
+                return r
         except Exception:
             time.sleep(1)
-    return ""
+    return None
 
 def download_file(args):
     url, dest = args
@@ -117,110 +119,208 @@ def download_file(args):
             time.sleep(1)
     return False
 
+def parse_comics_txt():
+    comics = []
+    txt_path = 'comics.txt'
+    if os.path.exists(txt_path):
+        with open(txt_path, 'r', encoding='utf-8') as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = [p.strip() for p in line.split('|')]
+                url_or_slug = parts[0]
+                from_chap = 1
+                to_chap = 10
+                if len(parts) >= 2:
+                    if parts[1].lower() == 'latest':
+                        from_chap = 'latest'
+                        to_chap = 'latest'
+                    else:
+                        try:
+                            from_chap = float(parts[1])
+                        except ValueError:
+                            from_chap = 1
+                if len(parts) >= 3:
+                    try:
+                        to_chap = float(parts[2])
+                    except ValueError:
+                        to_chap = None
+                elif len(parts) == 2 and from_chap != 'latest':
+                    to_chap = None # from_chap to end
+
+                comics.append({
+                    'url': url_or_slug,
+                    'from_chap': from_chap,
+                    'to_chap': to_chap
+                })
+
+    if not comics:
+        comics = DEFAULT_COMICS
+    return comics
+
+def get_comic_meta(target):
+    # Determine slug and comic_id
+    slug = None
+    comic_id = None
+    url = target if target.startswith('http') else f"https://nettruyenar.com/truyen-tranh/{target}"
+    
+    m = re.search(r'truyen-tranh/([a-zA-Z0-9_-]+?)(?:-(\d+))?/?$', url)
+    if m:
+        slug = m.group(1)
+        if m.group(2):
+            comic_id = m.group(2)
+
+    resp = http_get(url)
+    title = slug.replace('-', ' ').title() if slug else "Comic"
+    if resp:
+        html = resp.text
+        m_title = re.search(r'<h1[^>]*class=[\'"][^\'"]*title-detail[^\'"]*[\'"][^>]*>(.*?)</h1>', html, re.DOTALL | re.IGNORECASE)
+        if m_title:
+            title = m_title.group(1).strip()
+        if not comic_id:
+            m_id = re.search(r'data-id=[\'"](\d+)[\'"]', html)
+            if not m_id:
+                m_id = re.search(r'comicId\s*[:=]\s*[\'"]?(\d+)', html, re.IGNORECASE)
+            if m_id:
+                comic_id = m_id.group(1)
+
+    return slug, comic_id, title, url
+
+def fetch_chapters_via_api(slug, comic_id, from_chap, to_chap):
+    api_url = 'https://nettruyenar.com/Comic/Services/ComicService.asmx/ChapterList'
+    resp = session.get(api_url, params={'slug': slug, 'comicId': comic_id}, headers=API_HEADERS, timeout=20)
+    if resp.status_code != 200:
+        return []
+    data = resp.json()
+    raw_chaps = data.get('data', [])
+    if not raw_chaps:
+        return []
+
+    # Handle 'latest'
+    if from_chap == 'latest' or to_chap == 'latest':
+        latest_ch = max(raw_chaps, key=lambda x: float(x.get('chapter_num', 0)))
+        return [latest_ch]
+
+    # Filter by range
+    filtered = []
+    for c in raw_chaps:
+        try:
+            num = float(c.get('chapter_num', 0))
+            if num >= from_chap and (to_chap is None or num <= to_chap):
+                filtered.append(c)
+        except Exception:
+            pass
+
+    # Clean duplicates: if whole number chapter (e.g. 3) exists, exclude fractional parts (3.1, 3.2...)
+    int_nums = set(int(float(c.get('chapter_num', 0))) for c in filtered if float(c.get('chapter_num', 0)).is_integer())
+    clean_chaps = []
+    for c in filtered:
+        num = float(c.get('chapter_num', 0))
+        if num.is_integer():
+            clean_chaps.append(c)
+        else:
+            if int(num) not in int_nums:
+                clean_chaps.append(c)
+
+    # Sort ascending by chapter_num
+    clean_chaps.sort(key=lambda x: float(x.get('chapter_num', 0)))
+    return clean_chaps
+
 def process():
+    comic_list = parse_comics_txt()
+    print(f"Loaded {len(comic_list)} comic entries to process.")
+
     synced_archives = []
 
-    for c in COMICS:
+    for idx, item in enumerate(comic_list, 1):
+        target = item['url']
+        from_chap = item['from_chap']
+        to_chap = item['to_chap']
+
+        slug, comic_id, title, full_url = get_comic_meta(target)
+        if not slug or not comic_id:
+            print(f"[{idx}] Error resolving slug/comic_id for {target}")
+            continue
+
+        folder = FOLDER_MAPPING.get(slug)
+        if not folder:
+            parts = [p.capitalize() for p in slug.replace('_', '-').split('-') if p]
+            folder = f"{idx:02d}_{'_'.join(parts)}"
+
         print(f"\n==========================================")
-        print(f"Checking: {c['title']} (from Chap {c['from_chap']})")
+        print(f"[{idx}/{len(comic_list)}] {title}")
+        print(f"  Slug: {slug} | ComicID: {comic_id} | Range: {from_chap} -> {to_chap}")
+        print(f"  Target Folder: {folder}")
 
-        try:
-            html = http_get(c['url'])
-            if not html:
-                print(f"Error fetching {c['url']}")
+        chapters = fetch_chapters_via_api(slug, comic_id, from_chap, to_chap)
+        print(f"  Found {len(chapters)} chapters to sync: {[c.get('chapter_num') for c in chapters]}")
+        if not chapters:
+            continue
+
+        for ch in chapters:
+            c_num = float(ch.get('chapter_num', 0))
+            chap_clean = f"Chuong_{int(c_num) if c_num.is_integer() else c_num}"
+            chap_dir = os.path.join("staging", folder, chap_clean)
+            os.makedirs(chap_dir, exist_ok=True)
+
+            existing = [f for f in os.listdir(chap_dir) if f.endswith(('.jpg', '.png', '.webp'))]
+            if len(existing) >= 5:
+                print(f"    {chap_clean}: already has {len(existing)} pages, skipping.")
                 continue
 
-            # Find all chapter links for this comic
-            re_chap = re.compile(r'<a[^>]+href="((?:https://nettruyenar\.com)?/truyen-tranh/[^"]+/(?:chapter|chuong)-(\d+(?:\.\d+)?)[^"]*)"[^>]*>', re.IGNORECASE)
-            chapters = []
-            for m in re_chap.finditer(html):
-                href = m.group(1)
-                if href.startswith('/'):
-                    href = 'https://nettruyenar.com' + href
-                if c['slug'] in href:
-                    num = float(m.group(2))
-                    if num >= c['from_chap']:
-                        chapters.append({'href': href, 'num': num, 'raw_num': m.group(2)})
-
-            if not chapters:
-                print(f"Warning: No chapters >= {c['from_chap']} found for {c['title']}")
+            chap_url = f"https://nettruyenar.com/truyen-tranh/{slug}/{ch.get('chapter_slug')}/{ch.get('chapter_id')}"
+            ch_resp = http_get(chap_url)
+            if not ch_resp:
+                print(f"    {chap_clean}: Failed to load chapter page.")
                 continue
 
-            # Sort ascending by chapter number
-            chapters.sort(key=lambda x: x['num'])
-            
-            # Deduplicate by chapter number
-            unique_chapters = []
-            seen_nums = set()
-            for ch in chapters:
-                if ch['num'] not in seen_nums:
-                    seen_nums.add(ch['num'])
-                    unique_chapters.append(ch)
+            # Extract page images
+            img_tags = re.findall(r'<img[^>]+(?:data-original|data-sv1|data-src|src)=[\'"]([^\'"]+)[\'"][^>]*>', ch_resp.text, re.IGNORECASE)
+            reading_imgs = [img for img in img_tags if '/thumb/' not in img and re.search(r'nettruyen/.*\.(?:jpg|jpeg|png|webp)', img, re.I)]
+            seen = set()
+            ordered_imgs = []
+            for img in reading_imgs:
+                if img.startswith('//'):
+                    img = 'https:' + img
+                if img not in seen:
+                    seen.add(img)
+                    ordered_imgs.append(img)
 
-            print(f"Found {len(unique_chapters)} chapters to download (from {unique_chapters[0]['num']} to {unique_chapters[-1]['num']})")
+            if not ordered_imgs:
+                print(f"    {chap_clean}: No images found.")
+                continue
 
-            total_imgs_downloaded = 0
-            for ch in unique_chapters:
-                chap_clean = f"Chuong_{int(ch['num']) if ch['num'].is_integer() else ch['num']}"
-                chap_dir = os.path.join("staging", c['folder'], chap_clean)
-                os.makedirs(chap_dir, exist_ok=True)
+            dl_args = []
+            for p_idx, u in enumerate(ordered_imgs, 1):
+                dest_file = os.path.join(chap_dir, f"{p_idx:03d}.jpg")
+                dl_args.append((u, dest_file))
 
-                existing = [f for f in os.listdir(chap_dir) if f.endswith(('.jpg', '.png', '.webp'))]
-                if len(existing) >= 5:
-                    print(f"  {chap_clean} already has {len(existing)} pages, skipping.")
-                    continue
+            with ThreadPoolExecutor(max_workers=12) as pool:
+                results = list(pool.map(download_file, dl_args))
 
-                chap_html = http_get(ch['href'])
-                img_urls = re.findall(r'https?://[^"\'\s]+/nettruyen/[^"\'\s]+\.(?:jpg|jpeg|png|webp)', chap_html, re.IGNORECASE)
-                
-                # Deduplicate while preserving order
-                seen_urls = set()
-                ordered_imgs = []
-                for u in img_urls:
-                    if u not in seen_urls:
-                        seen_urls.add(u)
-                        ordered_imgs.append(u)
+            success_cnt = sum(1 for r in results if r)
+            print(f"    {chap_clean}: Downloaded {success_cnt}/{len(ordered_imgs)} pages.")
 
-                if not ordered_imgs:
-                    print(f"  Warning: No images found for {chap_clean}")
-                    continue
+        # Pack archive for this comic
+        staging_dir = os.path.join("staging", folder)
+        if os.path.exists(staging_dir) and os.listdir(staging_dir):
+            tar_filename = f"{folder}.tar.gz"
+            tar_path = os.path.join(DIST_DIR, tar_filename)
+            with tarfile.open(tar_path, "w:gz") as tar:
+                tar.add(staging_dir, arcname=folder)
 
-                # Download pages concurrently with ThreadPool
-                dl_args = []
-                for idx, u in enumerate(ordered_imgs):
-                    dest_file = os.path.join(chap_dir, f"{idx+1:03d}.jpg")
-                    dl_args.append((u, dest_file))
+            size_bytes = os.path.getsize(tar_path)
+            size_mb = size_bytes / (1024 * 1024)
+            print(f"  ==> Created archive: {tar_path} ({size_mb:.2f} MB, {size_bytes} bytes)")
+            synced_archives.append((folder, title, tar_filename, size_bytes))
+        else:
+            print(f"  Warning: No content to pack for {title}")
 
-                with ThreadPoolExecutor(max_workers=8) as pool:
-                    results = list(pool.map(download_file, dl_args))
-
-                success_cnt = sum(1 for r in results if r)
-                total_imgs_downloaded += success_cnt
-                print(f"  {chap_clean}: Downloaded {success_cnt}/{len(ordered_imgs)} pages.")
-
-            # Create tar.gz archive
-            staging_comic_dir = os.path.join("staging", c['folder'])
-            if os.path.exists(staging_comic_dir) and os.listdir(staging_comic_dir):
-                tar_filename = f"{c['folder']}.tar.gz"
-                tar_path = os.path.join(DIST_DIR, tar_filename)
-
-                with tarfile.open(tar_path, "w:gz") as tar:
-                    tar.add(staging_comic_dir, arcname=c['folder'])
-
-                size_bytes = os.path.getsize(tar_path)
-                size_mb = size_bytes / (1024 * 1024)
-                print(f"Created archive: {tar_path} ({size_mb:.2f} MB, {size_bytes} bytes)")
-                synced_archives.append((c['folder'], c['title'], tar_filename, size_bytes))
-            else:
-                print(f"No chapters downloaded for {c['title']}, archive not created.")
-
-        except Exception as e:
-            print(f"Error processing {c['title']}: {e}")
-
-    # Generate xteink_cloud_sync.sh for the ASUS ZenFone 4 Max
+    # Generate xteink_cloud_sync.sh
     now_str = time.strftime('%H:%M %d/%m')
     total_archives = len(synced_archives)
-    
+
     sync_sh = f"""#!/system/bin/sh
 # Real-time Cloud Sync with Live Progress for ASUS ZenFone XTEINK
 # Generated by Git Auto Cloud at {now_str}
@@ -318,8 +418,8 @@ write_msg "Đang kết nối Git Auto Cloud..."
 
 """
 
-    for idx, (folder, title, tar_fn, size_bytes) in enumerate(synced_archives):
-        sync_sh += f'download_comic {idx+1} {total_archives} "{title}" "{tar_fn}" {size_bytes}\n'
+    for idx, (folder, title, tar_fn, size_bytes) in enumerate(synced_archives, 1):
+        sync_sh += f'download_comic {idx} {total_archives} "{title}" "{tar_fn}" {size_bytes}\n'
 
     sync_sh += f"""
 NOW_STR=$(date +'%H:%M %d/%m')
@@ -335,7 +435,7 @@ echo "[HOÀN TẤT] $MSG"
     with open(sh_path, "w", encoding="utf-8") as f:
         f.write(sync_sh)
     print(f"\nGenerated phone sync script: {sh_path}")
-    print(f"Total synced comics: {len(synced_archives)}")
+    print(f"Total synced comics: {total_archives}")
 
 if __name__ == '__main__':
     process()
