@@ -189,10 +189,15 @@ def get_comic_meta(target):
 
 def fetch_chapters_via_api(slug, comic_id, from_chap, to_chap):
     api_url = 'https://nettruyenar.com/Comic/Services/ComicService.asmx/ChapterList'
-    resp = session.get(api_url, params={'slug': slug, 'comicId': comic_id}, headers=API_HEADERS, timeout=20)
-    if resp.status_code != 200:
+    try:
+        resp = session.get(api_url, params={'slug': slug, 'comicId': comic_id}, headers=API_HEADERS, timeout=20)
+        print(f"    API Response: status={resp.status_code}, length={len(resp.text)}, preview={resp.text[:120]!r}")
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+    except Exception as e:
+        print(f"    API Exception: {e}")
         return []
-    data = resp.json()
     raw_chaps = data.get('data', [])
     if not raw_chaps:
         return []
