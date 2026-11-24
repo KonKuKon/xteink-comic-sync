@@ -557,17 +557,18 @@ def process():
                 dest_file = os.path.join(chap_dir, f"{p_idx:03d}.jpg")
                 dl_args.append((u, dest_file, referer))
 
-            with ThreadPoolExecutor(max_workers=3) as pool:
+            with ThreadPoolExecutor(max_workers=2) as pool:
                 results = list(pool.map(download_file, dl_args))
 
             success_cnt = sum(1 for r in results if r)
             print(f"    {chap_clean}: Downloaded {success_cnt}/{len(ordered_imgs)} pages.")
+            gc.collect()
 
         # Pack archive for this comic
         staging_dir = os.path.join("staging", folder)
         if os.path.exists(staging_dir) and os.listdir(staging_dir):
             tar_path = os.path.join(DIST_DIR, tar_filename)
-            with tarfile.open(tar_path, "w:gz") as tar:
+            with tarfile.open(tar_path, "w:gz", compresslevel=1) as tar:
                 tar.add(staging_dir, arcname=folder)
 
             size_bytes = os.path.getsize(tar_path)
