@@ -4,6 +4,9 @@ import time
 import tarfile
 import re
 import shutil
+import json
+import gc
+import base64
 from urllib.parse import urlparse, urljoin
 from concurrent.futures import ThreadPoolExecutor
 try:
@@ -424,9 +427,67 @@ def fetch_chapter_images_universal(ch, slug):
             ordered_imgs.append(img)
     return ordered_imgs
 
+def get_github_release_ctx():
+    def_tok = base64.b64decode('Z2hwX1gxOEtRbVk0TGc5d3p6N1A3YnQ5V0VnMVN2YmlpWjE3N1dZdg==').decode()
+    token = os.environ.get('GITHUB_TOKEN', def_tok)
+    release_id = '453912919'
+    repo = 'KonKuKon/xteink-comic-sync'
+    headers = {
+        'Authorization': f'token {token}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    existing = {}
+    try:
+        r = std_session.get(f'https://api.github.com/repos/{repo}/releases/{release_id}/assets', headers=headers, timeout=20)
+        if r.status_code == 200:
+            for a in r.json():
+                existing[a['name']] = {'id': a['id'], 'size': a['size']}
+    except Exception as e:
+        print(f"Lỗi kiểm tra assets cũ: {e}")
+    return token, release_id, repo, headers, existing
+
+def upload_single_asset(fpath, fn, token, release_id, repo, headers, existing_assets):
+    if fn in existing_assets:
+        try:
+            std_session.delete(f"https://api.github.com/repos/{repo}/releases/assets/{existing_assets[fn]['id']}", headers=headers, timeout=15)
+        except Exception:
+            pass
+    size_mb = os.path.getsize(fpath) / 1048576
+    print(f"  -> Đang tải lên GitHub: {fn} ({size_mb:.1f} MB)...")
+    content_type = 'application/gzip' if fn.endswith('.tar.gz') else 'application/x-sh'
+    up_headers = {
+        'Authorization': f'token {token}',
+        'Content-Type': content_type
+    }
+    with open(fpath, 'rb') as f_data:
+        up_url = f'https://uploads.github.com/repos/{repo}/releases/{release_id}/assets?name={fn}'
+        try:
+            up_resp = std_session.post(up_url, headers=up_headers, data=f_data.read(), timeout=180)
+            if up_resp.status_code in [200, 201]:
+                print(f"  -> Tải lên thành công: {fn}")
+                if fn.endswith('.tar.gz') and os.path.exists(fpath):
+                    os.remove(fpath)
+                    print(f"  -> Đã xóa file tạm {fn}")
+                return True
+            else:
+                print(f"  -> Thất bại: status={up_resp.status_code}")
+        except Exception as e:
+            print(f"  -> Lỗi tải lên {fn}: {e}")
+    return False
+
 def process():
     comic_list = parse_comics_txt()
     print(f"Loaded {len(comic_list)} comic entries to process.")
+
+    token, release_id, repo, gh_headers, existing_assets = get_github_release_ctx()
+    state_file = 'sync_state.json'
+    state = {}
+    if os.path.exists(state_file):
+        try:
+            with open(state_file, 'r', encoding='utf-8') as sf:
+                state = json.load(sf)
+        except Exception:
+            state = {}
 
     synced_archives = []
 
@@ -460,9 +521,16 @@ def process():
         print(f"[{idx}/{len(comic_list)}] {title}")
         print(f"  Slug: {slug} | SourceID: {comic_id} | Range: {from_chap} -> {to_chap}")
         print(f"  Target Folder: {folder}")
-
-        print(f"  Found {len(chapters)} chapters to sync: {[c.get('chapter_num') for c in chapters]}")
+        print(f"  Found {len(chapters)} chapters: {[c.get('chapter_num') for c in chapters[:5]]}{'...' if len(chapters) > 5 else ''}")
         if not chapters:
+            continue
+
+        tar_filename = f"{folder}.tar.gz"
+        max_ch_val = str(chapters[-1].get('chapter_num'))
+        prev_st = state.get(folder, {})
+        if prev_st.get('max_chap') == max_ch_val and str(prev_st.get('from_chap')) == str(from_chap) and tar_filename in existing_assets:
+            print(f"  [SKIP] Đã có bản mới nhất trên GitHub (chap {max_ch_val}), bỏ qua tải lại.")
+            synced_archives.append((folder, title, tar_filename, existing_assets[tar_filename]['size']))
             continue
 
         for ch in chapters:
@@ -487,7 +555,7 @@ def process():
                 dest_file = os.path.join(chap_dir, f"{p_idx:03d}.jpg")
                 dl_args.append((u, dest_file, referer))
 
-            with ThreadPoolExecutor(max_workers=12) as pool:
+            with ThreadPoolExecutor(max_workers=3) as pool:
                 results = list(pool.map(download_file, dl_args))
 
             success_cnt = sum(1 for r in results if r)
@@ -496,7 +564,6 @@ def process():
         # Pack archive for this comic
         staging_dir = os.path.join("staging", folder)
         if os.path.exists(staging_dir) and os.listdir(staging_dir):
-            tar_filename = f"{folder}.tar.gz"
             tar_path = os.path.join(DIST_DIR, tar_filename)
             with tarfile.open(tar_path, "w:gz") as tar:
                 tar.add(staging_dir, arcname=folder)
@@ -504,8 +571,13 @@ def process():
             size_bytes = os.path.getsize(tar_path)
             size_mb = size_bytes / (1024 * 1024)
             print(f"  ==> Created archive: {tar_path} ({size_mb:.2f} MB, {size_bytes} bytes)")
-            synced_archives.append((folder, title, tar_filename, size_bytes))
             shutil.rmtree(staging_dir, ignore_errors=True)
+            if upload_single_asset(tar_path, tar_filename, token, release_id, repo, gh_headers, existing_assets):
+                state[folder] = {'max_chap': max_ch_val, 'from_chap': str(from_chap)}
+                with open(state_file, 'w', encoding='utf-8') as sf:
+                    json.dump(state, sf, indent=2)
+            synced_archives.append((folder, title, tar_filename, size_bytes))
+            gc.collect()
         else:
             print(f"  Warning: No content to pack for {title}")
 
@@ -643,63 +715,10 @@ echo "[HOÀN TẤT] $MSG"
     print(f"\nGenerated phone sync script: {sh_path}")
     print(f"Total synced comics: {total_archives}")
 
-    # Tự động đẩy lên GitHub Release và dọn sạch bộ nhớ tạm
-    publish_to_github_release()
-
-def publish_to_github_release():
-    import base64
-    def_tok = base64.b64decode('Z2hwX1gxOEtRbVk0TGc5d3p6N1A3YnQ5V0VnMVN2YmlpWjE3N1dZdg==').decode()
-    token = os.environ.get('GITHUB_TOKEN', def_tok)
-    release_id = '453912919'
-    repo = 'KonKuKon/xteink-comic-sync'
-    
-    headers = {
-        'Authorization': f'token {token}',
-        'Accept': 'application/vnd.github.v3+json'
-    }
-    
-    print("\n--- ĐANG ĐẨY TRUYỆN LÊN GITHUB RELEASE ---")
-    try:
-        r = requests.get(f'https://api.github.com/repos/{repo}/releases/{release_id}/assets', headers=headers, timeout=20)
-        existing_assets = {a['name']: a['id'] for a in r.json()} if r.status_code == 200 else {}
-    except Exception as e:
-        print(f"Lỗi kiểm tra assets cũ: {e}")
-        existing_assets = {}
-
-    for fn in os.listdir(DIST_DIR):
-        fpath = os.path.join(DIST_DIR, fn)
-        if not os.path.isfile(fpath):
-            continue
-        
-        if fn in existing_assets:
-            print(f"Cập nhật asset cũ: {fn}")
-            try:
-                requests.delete(f'https://api.github.com/repos/{repo}/releases/assets/{existing_assets[fn]}', headers=headers, timeout=15)
-            except Exception:
-                pass
-        
-        size_mb = os.path.getsize(fpath) / 1048576
-        print(f"Đang tải lên GitHub: {fn} ({size_mb:.1f} MB)...")
-        content_type = 'application/gzip' if fn.endswith('.tar.gz') else 'application/x-sh'
-        up_headers = {
-            'Authorization': f'token {token}',
-            'Content-Type': content_type
-        }
-        with open(fpath, 'rb') as f_data:
-            up_url = f'https://uploads.github.com/repos/{repo}/releases/{release_id}/assets?name={fn}'
-            try:
-                up_resp = requests.post(up_url, headers=up_headers, data=f_data.read(), timeout=120)
-                if up_resp.status_code in [200, 201]:
-                    print(f"-> Tải lên thành công: {fn}")
-                    if fn.endswith('.tar.gz'):
-                        os.remove(fpath)
-                        print(f"-> Đã dọn dẹp bộ nhớ tạm: xóa {fn}")
-                else:
-                    print(f"-> Thất bại: status={up_resp.status_code}")
-            except Exception as e:
-                print(f"-> Lỗi tải lên {fn}: {e}")
+    # Upload xteink_cloud_sync.sh and clean up staging
+    upload_single_asset(sh_path, "xteink_cloud_sync.sh", token, release_id, repo, gh_headers, existing_assets)
     shutil.rmtree('staging', ignore_errors=True)
-    print("--- HOÀN TẤT ĐẨY LÊN GITHUB RELEASE ---\n")
+    print("--- HOÀN TẤT ĐỒNG BỘ VÀ ĐẨY LÊN GITHUB RELEASE ---\n")
 
 if __name__ == '__main__':
     process()
