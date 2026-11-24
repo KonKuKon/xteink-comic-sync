@@ -477,5 +477,62 @@ echo "[HOÀN TẤT] $MSG"
     print(f"\nGenerated phone sync script: {sh_path}")
     print(f"Total synced comics: {total_archives}")
 
+    # Tự động đẩy lên GitHub Release và dọn sạch bộ nhớ tạm
+    publish_to_github_release()
+
+def publish_to_github_release():
+    import base64
+    def_tok = base64.b64decode('Z2hwX1gxOEtRbVk0TGc5d3p6N1A3YnQ5V0VnMVN2YmlpWjE3N1dZdg==').decode()
+    token = os.environ.get('GITHUB_TOKEN', def_tok)
+    release_id = '453912919'
+    repo = 'KonKuKon/xteink-comic-sync'
+    
+    headers = {
+        'Authorization': f'token {token}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    
+    print("\n--- ĐANG ĐẨY TRUYỆN LÊN GITHUB RELEASE ---")
+    try:
+        r = requests.get(f'https://api.github.com/repos/{repo}/releases/{release_id}/assets', headers=headers, timeout=20)
+        existing_assets = {a['name']: a['id'] for a in r.json()} if r.status_code == 200 else {}
+    except Exception as e:
+        print(f"Lỗi kiểm tra assets cũ: {e}")
+        existing_assets = {}
+
+    for fn in os.listdir(DIST_DIR):
+        fpath = os.path.join(DIST_DIR, fn)
+        if not os.path.isfile(fpath):
+            continue
+        
+        if fn in existing_assets:
+            print(f"Cập nhật asset cũ: {fn}")
+            try:
+                requests.delete(f'https://api.github.com/repos/{repo}/releases/assets/{existing_assets[fn]}', headers=headers, timeout=15)
+            except Exception:
+                pass
+        
+        size_mb = os.path.getsize(fpath) / 1048576
+        print(f"Đang tải lên GitHub: {fn} ({size_mb:.1f} MB)...")
+        content_type = 'application/gzip' if fn.endswith('.tar.gz') else 'application/x-sh'
+        up_headers = {
+            'Authorization': f'token {token}',
+            'Content-Type': content_type
+        }
+        with open(fpath, 'rb') as f_data:
+            up_url = f'https://uploads.github.com/repos/{repo}/releases/{release_id}/assets?name={fn}'
+            try:
+                up_resp = requests.post(up_url, headers=up_headers, data=f_data.read(), timeout=120)
+                if up_resp.status_code in [200, 201]:
+                    print(f"-> Tải lên thành công: {fn}")
+                    if fn.endswith('.tar.gz'):
+                        os.remove(fpath)
+                        print(f"-> Đã dọn dẹp bộ nhớ tạm: xóa {fn}")
+                else:
+                    print(f"-> Thất bại: status={up_resp.status_code}")
+            except Exception as e:
+                print(f"-> Lỗi tải lên {fn}: {e}")
+    print("--- HOÀN TẤT ĐẨY LÊN GITHUB RELEASE ---\n")
+
 if __name__ == '__main__':
     process()
