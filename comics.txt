@@ -1,20 +1,20 @@
 # ==============================================================================
-# HƯỚNG DẪN THÊM TRUYỆN CHO ASUS ZENFONE XTEINK
+# HƯỚNG DẪN THÊM TRUYỆN CHO ASUS ZENFONE XTEINK (HỖ TRỢ ĐA NGUỒN WEB)
 # ==============================================================================
-# Bạn chỉ cần dán link truyện từ NetTruyen và chọn các chap muốn đọc:
+# Bạn có thể dán link từ BẤT KỲ trang truyện nào (NetTruyen, GocTruyenTranh, TruyenQQ...):
 #
 # 1. Tải 10 chap đầu tiên để đọc thử (Mặc định):
-#    https://nettruyenar.com/truyen-tranh/ten-truyen
+#    https://goctruyentranhvui41.com/truyen/ten-truyen
 #
 # 2. Tải một khoảng chap cụ thể (Ví dụ từ chap 1 đến chap 10):
 #    https://nettruyenar.com/truyen-tranh/ten-truyen | 1 - 10
 #    (hoặc: | 1 -> 10  hoặc: | 1 | 10)
 #
 # 3. Chỉ tải chap mới nhất trên mạng:
-#    https://nettruyenar.com/truyen-tranh/ten-truyen | moi nhat
+#    https://truyenqqviet.com/truyen-tranh/ten-truyen | moi nhat
 #
 # 4. Tải từ một chap cho tới chap mới nhất:
-#    https://nettruyenar.com/truyen-tranh/ten-truyen | 100
+#    https://goctruyentranhvui41.com/truyen/nguoi-vo-doi-toi-o-canh-dong-lua-mi | 1
 # ==============================================================================
 
 https://nettruyenar.com/truyen-tranh/thanh-mai-truc-ma-cua-de-nhat-thien-ha-25478 | 109

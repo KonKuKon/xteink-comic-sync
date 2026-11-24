@@ -4,12 +4,15 @@ import time
 import tarfile
 import re
 import shutil
+from urllib.parse import urlparse, urljoin
 from concurrent.futures import ThreadPoolExecutor
 try:
     from curl_cffi import requests
+    import requests as std_requests
     HAS_CFFI = True
 except ImportError:
     import requests
+    std_requests = requests
     HAS_CFFI = False
 
 try:
@@ -37,6 +40,8 @@ API_HEADERS = {
 }
 
 session = requests.Session(impersonate="chrome124") if HAS_CFFI else requests.Session()
+std_session = std_requests.Session()
+std_session.headers.update({'User-Agent': 'Mozilla/5.0'})
 
 FOLDER_MAPPING = {
     'thanh-mai-truc-ma-cua-de-nhat-thien-ha': '01_Thanh_Mai_Truc_Ma_Cua_De_Nhat_Thien_Ha',
@@ -99,11 +104,18 @@ DEFAULT_COMICS = [
     }
 ]
 
-def http_get(url, is_api=False):
-    hdrs = API_HEADERS if is_api else HEADERS
+def http_get(url, is_api=False, referer=None):
+    if 'nettruyen' in url.lower():
+        hdrs = API_HEADERS if is_api else HEADERS
+        cli = session
+    else:
+        hdrs = {'User-Agent': 'Mozilla/5.0'}
+        if referer:
+            hdrs['Referer'] = referer
+        cli = std_session
     for _ in range(3):
         try:
-            r = session.get(url, headers=hdrs, timeout=25)
+            r = cli.get(url, headers=hdrs, timeout=25)
             if r.status_code == 200:
                 return r
         except Exception:
@@ -111,12 +123,16 @@ def http_get(url, is_api=False):
     return None
 
 def download_file(args):
-    url, dest = args
+    url, dest = args[0], args[1]
+    referer = args[2] if len(args) > 2 else None
     if os.path.exists(dest) and os.path.getsize(dest) > 1000:
         return True
+    hdrs = dict(HEADERS)
+    if referer:
+        hdrs['Referer'] = referer
     for _ in range(3):
         try:
-            r = session.get(url, headers=HEADERS, timeout=25)
+            r = session.get(url, headers=hdrs, timeout=25)
             if r.status_code == 200 and len(r.content) > 1000:
                 with open(dest, 'wb') as f:
                     f.write(r.content)
@@ -259,6 +275,155 @@ def fetch_chapters_via_api(slug, comic_id, from_chap, to_chap):
     clean_chaps.sort(key=lambda x: float(x.get('chapter_num', 0)))
     return clean_chaps
 
+def get_goctruyentranh_comic(target, from_chap, to_chap):
+    parsed = urlparse(target.strip())
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    slug = parsed.path.strip('/').split('/')[-1]
+    resp = http_get(target.strip())
+    if not resp:
+        return slug, slug.replace('-', ' ').title(), [], base_url + '/'
+    html = resp.text
+    title = slug.replace('-', ' ').title()
+    m_title = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE | re.DOTALL)
+    if m_title:
+        title = re.sub(r'\s*\[.*?\]\s*$', '', m_title.group(1)).strip()
+
+    chap_nums = set(re.findall(r'chuong-(\d+(?:\.\d+)?)', html))
+    if chap_nums:
+        max_chap = int(max(float(n) for n in chap_nums))
+        all_nums = set(str(i) for i in range(1, max_chap + 1)) | chap_nums
+    else:
+        all_nums = set()
+    raw_chaps = [{'chapter_num': n, 'chap_str': n} for n in all_nums]
+    chapters = filter_chapters_range(raw_chaps, from_chap, to_chap)
+    if not chapters:
+        return slug, title, [], base_url + '/'
+
+    # Fetch comicId from the first available chapter page (or chap 1)
+    first_num = chapters[0]['chap_str']
+    ch_page = http_get(f"{base_url}/truyen/{slug}/chuong-{first_num}", referer=base_url + '/')
+    comic_id = None
+    if ch_page:
+        m_id = re.search(r'id:\s*`(\d+)`', ch_page.text)
+        if m_id:
+            comic_id = m_id.group(1)
+
+    for ch in chapters:
+        ch['_provider'] = 'goctruyentranh'
+        ch['_base_url'] = base_url
+        ch['_slug'] = slug
+        ch['_comic_id'] = comic_id
+    return slug, title, chapters, base_url + '/'
+
+def get_truyenqq_or_generic_comic(target, from_chap, to_chap):
+    parsed = urlparse(target.strip())
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    path_parts = [p for p in parsed.path.strip('/').split('/') if p]
+    slug = re.sub(r'\.html$', '', path_parts[-1]) if path_parts else 'comic'
+    resp = http_get(target.strip())
+    if not resp:
+        return slug, slug.replace('-', ' ').title(), [], base_url + '/'
+    html = resp.text
+    title = slug.replace('-', ' ').title()
+    m_h1 = re.search(r'<h1[^>]*>(.*?)</h1>', html, re.IGNORECASE | re.DOTALL)
+    if m_h1:
+        title = re.sub(r'<[^>]+>', '', m_h1.group(1)).strip()
+
+    # Extract chapter links matching common Vietnamese comic URL patterns
+    links = re.findall(r'href=[\'"]([^\'"]+)[\'"]', html, re.IGNORECASE)
+    chap_map = {}
+    for href in links:
+        m_ch = re.search(r'(?:chuong|chap|chapter|ep)[-_]?(\d+(?:\.\d+)?)', href, re.IGNORECASE)
+        if m_ch:
+            num_str = m_ch.group(1)
+            full_ch_url = urljoin(target.strip(), href)
+            if num_str not in chap_map:
+                chap_map[num_str] = {'chapter_num': num_str, 'url': full_ch_url}
+
+    chapters = filter_chapters_range(list(chap_map.values()), from_chap, to_chap)
+    for ch in chapters:
+        ch['_provider'] = 'generic'
+        ch['_base_url'] = base_url
+    return slug, title, chapters, base_url + '/'
+
+def filter_chapters_range(raw_chaps, from_chap, to_chap):
+    if not raw_chaps:
+        return []
+    if from_chap == 'latest' or to_chap == 'latest':
+        return [max(raw_chaps, key=lambda x: float(x.get('chapter_num', 0)))]
+    filtered = []
+    for c in raw_chaps:
+        try:
+            num = float(c.get('chapter_num', 0))
+            if num >= from_chap and (to_chap is None or num <= to_chap):
+                filtered.append(c)
+        except Exception:
+            pass
+    int_nums = set(int(float(c.get('chapter_num', 0))) for c in filtered if float(c.get('chapter_num', 0)).is_integer())
+    clean_chaps = []
+    for c in filtered:
+        num = float(c.get('chapter_num', 0))
+        if num.is_integer() or int(num) not in int_nums:
+            clean_chaps.append(c)
+    clean_chaps.sort(key=lambda x: float(x.get('chapter_num', 0)))
+    return clean_chaps
+
+def fetch_chapter_images_universal(ch, slug):
+    prov = ch.get('_provider', 'nettruyen')
+    if prov == 'goctruyentranh':
+        base_url = ch['_base_url']
+        cid = ch.get('_comic_id')
+        if not cid:
+            return []
+        try:
+            post_hdrs = {'User-Agent': 'Mozilla/5.0', 'Referer': base_url + '/', 'X-Requested-With': 'XMLHttpRequest'}
+            post_data = {'comicId': cid, 'chapterNumber': ch['chap_str'], 'nameEn': ch['_slug']}
+            r = std_session.post(f"{base_url}/api/chapter/loadAll", data=post_data, headers=post_hdrs, timeout=20)
+            if r.status_code == 200:
+                imgs = r.json().get('result', {}).get('data') or []
+                return [u.replace('/c/code', '/c/web') for u in imgs]
+        except Exception:
+            pass
+        return []
+
+    if prov == 'generic':
+        ch_resp = http_get(ch['url'])
+        if not ch_resp:
+            return []
+        img_tags = re.findall(r'<img[^>]+(?:data-original|data-sv1|data-lazy-src|data-src|src)=[\'"]([^\'"]+)[\'"][^>]*>', ch_resp.text, re.IGNORECASE)
+        ordered = []
+        seen = set()
+        for img in img_tags:
+            if any(bad in img.lower() for bad in ['/thumb/', 'logo', 'icon', 'avatar', 'banner', '.svg', '.gif', 'loading', 'ads']):
+                continue
+            if not re.search(r'\.(?:jpg|jpeg|png|webp)|/image/', img, re.I):
+                continue
+            if img.startswith('//'):
+                img = 'https:' + img
+            elif img.startswith('/'):
+                img = ch['_base_url'] + img
+            if img not in seen:
+                seen.add(img)
+                ordered.append(img)
+        return ordered
+
+    # Default: NetTruyen
+    chap_url = f"https://nettruyenar.com/truyen-tranh/{slug}/{ch.get('chapter_slug')}/{ch.get('chapter_id')}"
+    ch_resp = http_get(chap_url)
+    if not ch_resp:
+        return []
+    img_tags = re.findall(r'<img[^>]+(?:data-original|data-sv1|data-src|src)=[\'"]([^\'"]+)[\'"][^>]*>', ch_resp.text, re.IGNORECASE)
+    reading_imgs = [img for img in img_tags if '/thumb/' not in img and re.search(r'nettruyen/.*\.(?:jpg|jpeg|png|webp)', img, re.I)]
+    seen = set()
+    ordered_imgs = []
+    for img in reading_imgs:
+        if img.startswith('//'):
+            img = 'https:' + img
+        if img not in seen:
+            seen.add(img)
+            ordered_imgs.append(img)
+    return ordered_imgs
+
 def process():
     comic_list = parse_comics_txt()
     print(f"Loaded {len(comic_list)} comic entries to process.")
@@ -270,10 +435,21 @@ def process():
         from_chap = item['from_chap']
         to_chap = item['to_chap']
 
-        slug, comic_id, title, full_url = get_comic_meta(target)
-        if not slug or not comic_id:
-            print(f"[{idx}] Error resolving slug/comic_id for {target}")
-            continue
+        lower_t = target.lower()
+        referer = None
+        if 'goctruyentranh' in lower_t:
+            slug, title, chapters, referer = get_goctruyentranh_comic(target, from_chap, to_chap)
+            comic_id = chapters[0].get('_comic_id') if chapters else 'GTT'
+        elif lower_t.startswith('http') and 'nettruyen' not in lower_t:
+            slug, title, chapters, referer = get_truyenqq_or_generic_comic(target, from_chap, to_chap)
+            comic_id = 'WEB'
+        else:
+            slug, comic_id, title, full_url = get_comic_meta(target)
+            if not slug or not comic_id:
+                print(f"[{idx}] Error resolving slug/comic_id for {target}")
+                continue
+            chapters = fetch_chapters_via_api(slug, comic_id, from_chap, to_chap)
+            referer = HEADERS['Referer']
 
         folder = FOLDER_MAPPING.get(slug)
         if not folder:
@@ -282,10 +458,9 @@ def process():
 
         print(f"\n==========================================")
         print(f"[{idx}/{len(comic_list)}] {title}")
-        print(f"  Slug: {slug} | ComicID: {comic_id} | Range: {from_chap} -> {to_chap}")
+        print(f"  Slug: {slug} | SourceID: {comic_id} | Range: {from_chap} -> {to_chap}")
         print(f"  Target Folder: {folder}")
 
-        chapters = fetch_chapters_via_api(slug, comic_id, from_chap, to_chap)
         print(f"  Found {len(chapters)} chapters to sync: {[c.get('chapter_num') for c in chapters]}")
         if not chapters:
             continue
@@ -301,23 +476,7 @@ def process():
                 print(f"    {chap_clean}: already has {len(existing)} pages, skipping.")
                 continue
 
-            chap_url = f"https://nettruyenar.com/truyen-tranh/{slug}/{ch.get('chapter_slug')}/{ch.get('chapter_id')}"
-            ch_resp = http_get(chap_url)
-            if not ch_resp:
-                print(f"    {chap_clean}: Failed to load chapter page.")
-                continue
-
-            # Extract page images
-            img_tags = re.findall(r'<img[^>]+(?:data-original|data-sv1|data-src|src)=[\'"]([^\'"]+)[\'"][^>]*>', ch_resp.text, re.IGNORECASE)
-            reading_imgs = [img for img in img_tags if '/thumb/' not in img and re.search(r'nettruyen/.*\.(?:jpg|jpeg|png|webp)', img, re.I)]
-            seen = set()
-            ordered_imgs = []
-            for img in reading_imgs:
-                if img.startswith('//'):
-                    img = 'https:' + img
-                if img not in seen:
-                    seen.add(img)
-                    ordered_imgs.append(img)
+            ordered_imgs = fetch_chapter_images_universal(ch, slug)
 
             if not ordered_imgs:
                 print(f"    {chap_clean}: No images found.")
@@ -326,7 +485,7 @@ def process():
             dl_args = []
             for p_idx, u in enumerate(ordered_imgs, 1):
                 dest_file = os.path.join(chap_dir, f"{p_idx:03d}.jpg")
-                dl_args.append((u, dest_file))
+                dl_args.append((u, dest_file, referer))
 
             with ThreadPoolExecutor(max_workers=12) as pool:
                 results = list(pool.map(download_file, dl_args))
