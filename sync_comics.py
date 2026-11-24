@@ -361,6 +361,20 @@ download_comic() {{
     URL="$BASE_URL/$TAR_NAME"
     TMP_TAR="/data/local/tmp/$TAR_NAME"
 
+    # Kiểm tra xem bộ truyện này đã có sẵn trên máy chưa (chỉ tải truyện còn thiếu)
+    COMIC_FOLDER="${{TAR_NAME%.tar.gz}}"
+    TARGET_DIR="$BOOKS_DIR/$COMIC_FOLDER"
+    if [ ! -f "$BOOKS_DIR/.force_sync" ] && [ -d "$TARGET_DIR" ] && [ -n "$(/data/adb/xteink/busybox ls "$TARGET_DIR" 2>/dev/null || ls "$TARGET_DIR" 2>/dev/null)" ]; then
+        TOTAL_MB=$((TOTAL_BYTES / 1048576))
+        [ "$TOTAL_MB" -eq 0 ] && TOTAL_MB=1
+        OVERALL_PCT=$(( INDEX * 100 / TOTAL ))
+        echo "$INDEX|$TOTAL|$NAME|$TOTAL_MB|$TOTAL_MB|100|-|skipped|$OVERALL_PCT" > "$PROGRESS_FILE"
+        write_msg "[$INDEX/$TOTAL] $NAME: Đã có sẵn trên máy (Bỏ qua)"
+        echo "[$INDEX/$TOTAL] $NAME: Đã có trên máy -> Bỏ qua tải lại"
+        sleep 0.3
+        return 0
+    fi
+
     rm -f "$TMP_TAR"
     TOTAL_MB=$((TOTAL_BYTES / 1048576))
     [ "$TOTAL_MB" -eq 0 ] && TOTAL_MB=1
