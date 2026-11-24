@@ -3,8 +3,14 @@ import sys
 import time
 import tarfile
 import re
+import shutil
 from concurrent.futures import ThreadPoolExecutor
-from curl_cffi import requests
+try:
+    from curl_cffi import requests
+    HAS_CFFI = True
+except ImportError:
+    import requests
+    HAS_CFFI = False
 
 try:
     sys.stdout.reconfigure(line_buffering=True)
@@ -30,7 +36,7 @@ API_HEADERS = {
     'X-Requested-With': 'XMLHttpRequest'
 }
 
-session = requests.Session(impersonate="chrome124")
+session = requests.Session(impersonate="chrome124") if HAS_CFFI else requests.Session()
 
 FOLDER_MAPPING = {
     'thanh-mai-truc-ma-cua-de-nhat-thien-ha': '01_Thanh_Mai_Truc_Ma_Cua_De_Nhat_Thien_Ha',
@@ -340,6 +346,7 @@ def process():
             size_mb = size_bytes / (1024 * 1024)
             print(f"  ==> Created archive: {tar_path} ({size_mb:.2f} MB, {size_bytes} bytes)")
             synced_archives.append((folder, title, tar_filename, size_bytes))
+            shutil.rmtree(staging_dir, ignore_errors=True)
         else:
             print(f"  Warning: No content to pack for {title}")
 
@@ -532,6 +539,7 @@ def publish_to_github_release():
                     print(f"-> Thất bại: status={up_resp.status_code}")
             except Exception as e:
                 print(f"-> Lỗi tải lên {fn}: {e}")
+    shutil.rmtree('staging', ignore_errors=True)
     print("--- HOÀN TẤT ĐẨY LÊN GITHUB RELEASE ---\n")
 
 if __name__ == '__main__':
