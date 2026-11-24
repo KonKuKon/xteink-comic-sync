@@ -171,16 +171,29 @@ def get_comic_meta(target):
     # Determine slug and comic_id
     slug = None
     comic_id = None
-    url = target if target.startswith('http') else f"https://nettruyenar.com/truyen-tranh/{target}"
+    target_clean = target.strip()
     
-    m = re.search(r'truyen-tranh/([a-zA-Z0-9_-]+?)(?:-(\d+))?/?$', url)
+    m = re.search(r'(?:truyen-tranh/)?([a-zA-Z0-9_-]+?)(?:-(\d+))?/?$', target_clean)
     if m:
-        slug = m.group(1)
+        slug = m.group(1).strip('/-')
         if m.group(2):
             comic_id = m.group(2)
 
+    url = f"https://nettruyenar.com/truyen-tranh/{slug}" + (f"-{comic_id}" if comic_id else "")
     resp = http_get(url)
     title = slug.replace('-', ' ').title() if slug else "Comic"
+    
+    if (not resp or not comic_id) and slug:
+        search_kw = slug.replace('-', ' ')
+        s_resp = http_get(f"https://nettruyenar.com/tim-truyen?keyword={search_kw}")
+        if s_resp:
+            m_match = re.search(r'href=[\'"][^\'"]*truyen-tranh/([a-zA-Z0-9_-]+?)-(\d+)[\'"]', s_resp.text)
+            if m_match:
+                slug = m_match.group(1)
+                comic_id = m_match.group(2)
+                url = f"https://nettruyenar.com/truyen-tranh/{slug}-{comic_id}"
+                resp = http_get(url)
+
     if resp:
         html = resp.text
         m_title = re.search(r'<h1[^>]*class=[\'"][^\'"]*title-detail[^\'"]*[\'"][^>]*>(.*?)</h1>', html, re.DOTALL | re.IGNORECASE)
