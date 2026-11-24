@@ -126,7 +126,9 @@ def parse_comics_txt():
         with open(txt_path, 'r', encoding='utf-8') as f:
             for raw_line in f:
                 line = raw_line.strip()
-                if not line or line.startswith('#'):
+                if not line or line.startswith('#') or re.match(r'^\d*#', line):
+                    continue
+                if not line.startswith('http') and '/' not in line and '-' not in line:
                     continue
                 parts = [p.strip() for p in line.split('|')]
                 url_or_slug = parts[0]
