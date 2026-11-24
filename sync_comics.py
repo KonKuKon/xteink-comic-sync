@@ -428,8 +428,10 @@ def fetch_chapter_images_universal(ch, slug):
     return ordered_imgs
 
 def get_github_release_ctx():
-    def_tok = base64.b64decode('Z2hwX1gxOEtRbVk0TGc5d3p6N1A3YnQ5V0VnMVN2YmlpWjE3N1dZdg==').decode()
-    token = os.environ.get('GITHUB_TOKEN', def_tok)
+    token = os.environ.get('GITHUB_TOKEN', '').strip()
+    if not token and os.path.exists('.gh_token'):
+        with open('.gh_token', 'r', encoding='utf-8') as tf:
+            token = tf.read().strip()
     release_id = '453912919'
     repo = 'KonKuKon/xteink-comic-sync'
     headers = {
