@@ -1,4 +1,4 @@
-# ==============================================================================
+9# ==============================================================================
 # DANH SÁCH TRUYỆN THEO DÕI CHO ASUS ZENFONE XTEINK
 # ==============================================================================
 # Cú pháp mỗi dòng: [Link truyện] | [Chap bắt đầu]
@@ -14,3 +14,4 @@ https://nettruyenar.com/truyen-tranh/helmut-dua-tre-bi-ruong-bo-12894 | 142
 https://nettruyenar.com/truyen-tranh/moi-linh-danh-thue-tro-ve-deu-co-mot-ke-hoach-26273 | 110
 https://nettruyenar.com/truyen-tranh/chuyen-gia-con-trung-tai-duong-gia-tu-xuyen-26309 | 71
 https://nettruyenar.com/truyen-tranh/con-trai-ut-cua-ba-tuoc-la-mot-nguoi-choi-17413 | 1
+https://goctruyentranhvui41.com/truyen/ki-su-ba-nhat-the-gioi | 1
