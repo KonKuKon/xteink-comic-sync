@@ -119,6 +119,18 @@ def download_file(args):
             time.sleep(1)
     return False
 
+def parse_chap_spec(spec_str):
+    s = spec_str.lower().strip()
+    if any(k in s for k in ['latest', 'moi', 'mới']):
+        return 'latest', 'latest'
+    m_range = re.search(r'(\d+(?:\.\d+)?)\s*(?:->|-|to|:|\.\.)\s*(\d+(?:\.\d+)?)', s)
+    if m_range:
+        return float(m_range.group(1)), float(m_range.group(2))
+    m_num = re.search(r'(\d+(?:\.\d+)?)', s)
+    if m_num:
+        return float(m_num.group(1)), None
+    return 1, 10
+
 def parse_comics_txt():
     comics = []
     txt_path = 'comics.txt'
@@ -134,22 +146,16 @@ def parse_comics_txt():
                 url_or_slug = parts[0]
                 from_chap = 1
                 to_chap = 10
-                if len(parts) >= 2:
-                    if parts[1].lower() == 'latest':
-                        from_chap = 'latest'
-                        to_chap = 'latest'
-                    else:
-                        try:
-                            from_chap = float(parts[1])
-                        except ValueError:
-                            from_chap = 1
                 if len(parts) >= 3:
                     try:
+                        from_chap = float(parts[1])
                         to_chap = float(parts[2])
                     except ValueError:
-                        to_chap = None
-                elif len(parts) == 2 and from_chap != 'latest':
-                    to_chap = None # from_chap to end
+                        from_chap, to_chap = parse_chap_spec(parts[1])
+                elif len(parts) == 2:
+                    from_chap, to_chap = parse_chap_spec(parts[1])
+                else:
+                    from_chap, to_chap = 1, 10 # Mac dinh tai 10 chap dau de doc thu
 
                 comics.append({
                     'url': url_or_slug,

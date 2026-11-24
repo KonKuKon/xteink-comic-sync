@@ -1,8 +1,20 @@
 # ==============================================================================
-# DANH SÁCH TRUYỆN THEO DÕI CHO ASUS ZENFONE XTEINK
+# HƯỚNG DẪN THÊM TRUYỆN CHO ASUS ZENFONE XTEINK
 # ==============================================================================
-# Cú pháp mỗi dòng: [Link truyện] | [Chap bắt đầu]
-# Tự động đồng bộ từ Chap bắt đầu đến Chap mới nhất trên web mỗi ngày lúc 7:00 sáng
+# Bạn chỉ cần dán link truyện từ NetTruyen và chọn các chap muốn đọc:
+#
+# 1. Tải 10 chap đầu tiên để đọc thử (Mặc định):
+#    https://nettruyenar.com/truyen-tranh/ten-truyen
+#
+# 2. Tải một khoảng chap cụ thể (Ví dụ từ chap 1 đến chap 10):
+#    https://nettruyenar.com/truyen-tranh/ten-truyen | 1 - 10
+#    (hoặc: | 1 -> 10  hoặc: | 1 | 10)
+#
+# 3. Chỉ tải chap mới nhất trên mạng:
+#    https://nettruyenar.com/truyen-tranh/ten-truyen | moi nhat
+#
+# 4. Tải từ một chap cho tới chap mới nhất:
+#    https://nettruyenar.com/truyen-tranh/ten-truyen | 100
 # ==============================================================================
 
 https://nettruyenar.com/truyen-tranh/thanh-mai-truc-ma-cua-de-nhat-thien-ha-25478 | 109
@@ -14,4 +26,4 @@ https://nettruyenar.com/truyen-tranh/helmut-dua-tre-bi-ruong-bo-12894 | 142
 https://nettruyenar.com/truyen-tranh/moi-linh-danh-thue-tro-ve-deu-co-mot-ke-hoach-26273 | 110
 https://nettruyenar.com/truyen-tranh/chuyen-gia-con-trung-tai-duong-gia-tu-xuyen-26309 | 71
 https://nettruyenar.com/truyen-tranh/con-trai-ut-cua-ba-tuoc-la-mot-nguoi-choi-17413 | 1
-https://nettruyenar.com/truyen-tranh/ki-su-ba-nhat-the-gioi-25230 | 1
+https://nettruyenar.com/truyen-tranh/ki-su-ba-nhat-the-gioi-25230 | 1 | 10
