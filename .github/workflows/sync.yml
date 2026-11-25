@@ -1,16 +1,6 @@
-name: XTEINK Cloud Comic Sync
+name: XTEINK Cloud Comic Sync (Manual Only - TV Box handles Auto Sync)
 
 on:
-  schedule:
-    # Chạy tự động hàng ngày lúc 7:00 sáng giờ Việt Nam (00:00 UTC)
-    - cron: '0 0 * * *'
-  push:
-    branches:
-      - main
-    paths:
-      - 'comics.txt'
-      - 'sync_comics.py'
-      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:

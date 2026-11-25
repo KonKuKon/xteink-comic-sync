@@ -718,8 +718,11 @@ echo "[HOÀN TẤT] $MSG"
     print(f"\nGenerated phone sync script: {sh_path}")
     print(f"Total synced comics: {total_archives}")
 
-    # Upload xteink_cloud_sync.sh and clean up staging
-    upload_single_asset(sh_path, "xteink_cloud_sync.sh", token, release_id, repo, gh_headers, existing_assets)
+    # Upload xteink_cloud_sync.sh only if we have at least 1 comic
+    if total_archives > 0:
+        upload_single_asset(sh_path, "xteink_cloud_sync.sh", token, release_id, repo, gh_headers, existing_assets)
+    else:
+        print("Warning: 0 comics synced, skipping xteink_cloud_sync.sh upload to preserve existing feed.")
     shutil.rmtree('staging', ignore_errors=True)
     print("--- HOÀN TẤT ĐỒNG BỘ VÀ ĐẨY LÊN GITHUB RELEASE ---\n")
 
