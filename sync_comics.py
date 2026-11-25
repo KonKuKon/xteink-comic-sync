@@ -527,62 +527,69 @@ def process():
         if not chapters:
             continue
 
-        tar_filename = f"{folder}.tar.gz"
-        max_ch_val = str(chapters[-1].get('chapter_num'))
-        prev_st = state.get(folder, {})
-        if prev_st.get('max_chap') == max_ch_val and str(prev_st.get('from_chap')) == str(from_chap) and tar_filename in existing_assets:
-            print(f"  [SKIP] Đã có bản mới nhất trên GitHub (chap {max_ch_val}), bỏ qua tải lại.")
-            synced_archives.append((folder, title, tar_filename, existing_assets[tar_filename]['size']))
-            continue
+        CHUNK_SIZE = 40
+        chunks = [chapters[i:i + CHUNK_SIZE] for i in range(0, len(chapters), CHUNK_SIZE)]
+        for c_idx, chunk in enumerate(chunks, 1):
+            tar_filename = f"{folder}.tar.gz" if len(chunks) == 1 else f"{folder}__p{c_idx}.tar.gz"
+            c_last_num = float(chunk[-1].get('chapter_num', 0))
+            last_chap_clean = f"Chuong_{int(c_last_num) if c_last_num.is_integer() else c_last_num}"
+            max_ch_val = str(chunk[-1].get('chapter_num'))
+            first_ch_val = str(chunk[0].get('chapter_num'))
 
-        for ch in chapters:
-            c_num = float(ch.get('chapter_num', 0))
-            chap_clean = f"Chuong_{int(c_num) if c_num.is_integer() else c_num}"
-            chap_dir = os.path.join("staging", folder, chap_clean)
-            os.makedirs(chap_dir, exist_ok=True)
-
-            existing = [f for f in os.listdir(chap_dir) if f.endswith(('.jpg', '.png', '.webp'))]
-            if len(existing) >= 5:
-                print(f"    {chap_clean}: already has {len(existing)} pages, skipping.")
+            prev_st = state.get(tar_filename, {})
+            if prev_st.get('max_chap') == max_ch_val and prev_st.get('first_chap') == first_ch_val and tar_filename in existing_assets:
+                print(f"  [SKIP] {tar_filename} đã có trên GitHub (chap {first_ch_val}->{max_ch_val}).")
+                synced_archives.append((folder, title, tar_filename, existing_assets[tar_filename]['size'], last_chap_clean))
                 continue
 
-            ordered_imgs = fetch_chapter_images_universal(ch, slug)
+            for ch in chunk:
+                c_num = float(ch.get('chapter_num', 0))
+                chap_clean = f"Chuong_{int(c_num) if c_num.is_integer() else c_num}"
+                chap_dir = os.path.join("staging", folder, chap_clean)
+                os.makedirs(chap_dir, exist_ok=True)
 
-            if not ordered_imgs:
-                print(f"    {chap_clean}: No images found.")
-                continue
+                existing = [f for f in os.listdir(chap_dir) if f.endswith(('.jpg', '.png', '.webp'))]
+                if len(existing) >= 5:
+                    print(f"    {chap_clean}: already has {len(existing)} pages, skipping.")
+                    continue
 
-            dl_args = []
-            for p_idx, u in enumerate(ordered_imgs, 1):
-                dest_file = os.path.join(chap_dir, f"{p_idx:03d}.jpg")
-                dl_args.append((u, dest_file, referer))
+                ordered_imgs = fetch_chapter_images_universal(ch, slug)
 
-            with ThreadPoolExecutor(max_workers=2) as pool:
-                results = list(pool.map(download_file, dl_args))
+                if not ordered_imgs:
+                    print(f"    {chap_clean}: No images found.")
+                    continue
 
-            success_cnt = sum(1 for r in results if r)
-            print(f"    {chap_clean}: Downloaded {success_cnt}/{len(ordered_imgs)} pages.")
-            gc.collect()
+                dl_args = []
+                for p_idx, u in enumerate(ordered_imgs, 1):
+                    dest_file = os.path.join(chap_dir, f"{p_idx:03d}.jpg")
+                    dl_args.append((u, dest_file, referer))
 
-        # Pack archive for this comic
-        staging_dir = os.path.join("staging", folder)
-        if os.path.exists(staging_dir) and os.listdir(staging_dir):
-            tar_path = os.path.join(DIST_DIR, tar_filename)
-            with tarfile.open(tar_path, "w:gz", compresslevel=1) as tar:
-                tar.add(staging_dir, arcname=folder)
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    results = list(pool.map(download_file, dl_args))
 
-            size_bytes = os.path.getsize(tar_path)
-            size_mb = size_bytes / (1024 * 1024)
-            print(f"  ==> Created archive: {tar_path} ({size_mb:.2f} MB, {size_bytes} bytes)")
-            shutil.rmtree(staging_dir, ignore_errors=True)
-            if upload_single_asset(tar_path, tar_filename, token, release_id, repo, gh_headers, existing_assets):
-                state[folder] = {'max_chap': max_ch_val, 'from_chap': str(from_chap)}
-                with open(state_file, 'w', encoding='utf-8') as sf:
-                    json.dump(state, sf, indent=2)
-            synced_archives.append((folder, title, tar_filename, size_bytes))
-            gc.collect()
-        else:
-            print(f"  Warning: No content to pack for {title}")
+                success_cnt = sum(1 for r in results if r)
+                print(f"    {chap_clean}: Downloaded {success_cnt}/{len(ordered_imgs)} pages.")
+                gc.collect()
+
+            # Pack archive for this chunk
+            staging_dir = os.path.join("staging", folder)
+            if os.path.exists(staging_dir) and os.listdir(staging_dir):
+                tar_path = os.path.join(DIST_DIR, tar_filename)
+                with tarfile.open(tar_path, "w:gz", compresslevel=1) as tar:
+                    tar.add(staging_dir, arcname=folder)
+
+                size_bytes = os.path.getsize(tar_path)
+                size_mb = size_bytes / (1024 * 1024)
+                print(f"  ==> Created archive: {tar_path} ({size_mb:.2f} MB, {size_bytes} bytes)")
+                shutil.rmtree(staging_dir, ignore_errors=True)
+                if upload_single_asset(tar_path, tar_filename, token, release_id, repo, gh_headers, existing_assets):
+                    state[tar_filename] = {'max_chap': max_ch_val, 'first_chap': first_ch_val}
+                    with open(state_file, 'w', encoding='utf-8') as sf:
+                        json.dump(state, sf, indent=2)
+                synced_archives.append((folder, title, tar_filename, size_bytes, last_chap_clean))
+                gc.collect()
+            else:
+                print(f"  Warning: No content to pack for {tar_filename}")
 
     # Generate xteink_cloud_sync.sh
     now_str = time.strftime('%H:%M %d/%m')
@@ -620,20 +627,22 @@ download_comic() {{
     NAME="$3"
     TAR_NAME="$4"
     TOTAL_BYTES="$5"
+    CHECK_CHAP="$6"
     URL="$BASE_URL/$TAR_NAME"
     TMP_TAR="/data/local/tmp/$TAR_NAME"
 
-    # Kiểm tra xem bộ truyện này đã có sẵn trên máy chưa (chỉ tải truyện còn thiếu)
+    # Kiểm tra xem phần/bộ truyện này đã có sẵn trên máy chưa (chỉ tải phần còn thiếu)
     COMIC_FOLDER="${{TAR_NAME%.tar.gz}}"
+    COMIC_FOLDER="${{COMIC_FOLDER%%__p*}}"
     TARGET_DIR="$BOOKS_DIR/$COMIC_FOLDER"
-    if [ ! -f "$BOOKS_DIR/.force_sync" ] && [ -d "$TARGET_DIR" ] && [ -n "$(/data/adb/xteink/busybox ls "$TARGET_DIR" 2>/dev/null || ls "$TARGET_DIR" 2>/dev/null)" ]; then
+    if [ ! -f "$BOOKS_DIR/.force_sync" ] && [ -n "$CHECK_CHAP" ] && [ -d "$TARGET_DIR/$CHECK_CHAP" ]; then
         TOTAL_MB=$((TOTAL_BYTES / 1048576))
         [ "$TOTAL_MB" -eq 0 ] && TOTAL_MB=1
         OVERALL_PCT=$(( INDEX * 100 / TOTAL ))
         echo "$INDEX|$TOTAL|$NAME|$TOTAL_MB|$TOTAL_MB|100|-|skipped|$OVERALL_PCT" > "$PROGRESS_FILE"
         write_msg "[$INDEX/$TOTAL] $NAME: Đã có sẵn trên máy (Bỏ qua)"
-        echo "[$INDEX/$TOTAL] $NAME: Đã có trên máy -> Bỏ qua tải lại"
-        sleep 0.3
+        echo "[$INDEX/$TOTAL] $NAME: Đã có trên máy ($CHECK_CHAP) -> Bỏ qua tải lại"
+        sleep 0.2
         return 0
     fi
 
@@ -699,8 +708,8 @@ write_msg "Đang kết nối Git Auto Cloud..."
 
 """
 
-    for idx, (folder, title, tar_fn, size_bytes) in enumerate(synced_archives, 1):
-        sync_sh += f'download_comic {idx} {total_archives} "{title}" "{tar_fn}" {size_bytes}\n'
+    for idx, (folder, title, tar_fn, size_bytes, last_chap) in enumerate(synced_archives, 1):
+        sync_sh += f'download_comic {idx} {total_archives} "{title}" "{tar_fn}" {size_bytes} "{last_chap}"\n'
 
     sync_sh += f"""
 NOW_STR=$(date +'%H:%M %d/%m')
